@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
-    int N = atoi(argv[1]);
+    int length = atoi(argv[1]);
     char *type = argv[2];
     char *operation = argv[3];
     char *operation_type = argv[4];
@@ -32,21 +32,21 @@ int main(int argc, char *argv[]) {
 
     int type_size = (datatype == MPI_INT) ? sizeof(int) : sizeof(char);
 
-    void *data = malloc(N * type_size);
+    void *data = malloc(length * type_size);
 
     if (rank == 0) {
-        fill_array(data, N, datatype);
+        fill_array(data, length, datatype);
     }
 
     MPI_Barrier(MPI_COMM_WORLD);
     double start = MPI_Wtime();
 
     if (strcmp(operation, "broadcast") == 0) {
-        perform_broadcast(data, N, datatype, rank, operation_type);
+        perform_broadcast(data, length, datatype, rank, operation_type);
     } else if (strcmp(operation, "scatter") == 0) {
-        perform_scatter(data, N, datatype, rank, size, operation_type);
+        perform_scatter(data, length, datatype, rank, size, operation_type);
     } else if (strcmp(operation, "gather") == 0) {
-        perform_gather(data, N, datatype, rank, size, operation_type);
+        perform_gather(data, length, datatype, rank, size, operation_type);
         } else if (strcmp(operation, "ring") == 0) {
         if (rank == 0) {
             fprintf(stderr, "Error: Ring operation not yet implemented.\n");
@@ -58,11 +58,12 @@ int main(int argc, char *argv[]) {
     MPI_Barrier(MPI_COMM_WORLD);
     double end = MPI_Wtime();
 
+    free(data);
+    MPI_Finalize();
+
     if (rank == 0) {
         printf("Execution time (ms) = %f\n", (end - start) * 1000);
     }
-
-    free(data);
-    MPI_Finalize();
+    
     return 0;
 }

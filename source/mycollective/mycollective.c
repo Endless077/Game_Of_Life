@@ -32,7 +32,7 @@ void Bbroadcast(void *data, int count, MPI_Datatype datatype, int root, MPI_Comm
 }
 
 // Function Blocking Scatter
-void Bscatter(void *sendbuf, void **recvbuf, int N, MPI_Datatype datatype, int root, MPI_Comm comm) {
+void Bscatter(void *sendbuf, void **recvbuf, int length, MPI_Datatype datatype, int root, MPI_Comm comm) {
     // Initialize
     int rank, size, typesize;
     MPI_Comm_rank(comm, &rank);
@@ -40,8 +40,8 @@ void Bscatter(void *sendbuf, void **recvbuf, int N, MPI_Datatype datatype, int r
     MPI_Type_size(datatype, &typesize);
 
     // Calculate partitions
-    int extra = N % size;
-    int base_count = N / size;
+    int extra = length % size;
+    int base_count = length / size;
 
     // Allocate send counts and displacements buffers
     int *sendcounts = malloc(size * sizeof(int));
@@ -80,7 +80,7 @@ void Bscatter(void *sendbuf, void **recvbuf, int N, MPI_Datatype datatype, int r
 }
 
 // Function Blocking Gather
-void Bgather(void *sendbuf, void *recvbuf, int N, MPI_Datatype datatype, int root, MPI_Comm comm) {
+void Bgather(void *sendbuf, void *recvbuf, int length, MPI_Datatype datatype, int root, MPI_Comm comm) {
     // Initialize
     int rank, size, typesize;
     MPI_Comm_rank(comm, &rank);
@@ -88,8 +88,8 @@ void Bgather(void *sendbuf, void *recvbuf, int N, MPI_Datatype datatype, int roo
     MPI_Type_size(datatype, &typesize);
 
     // Calculate partitions
-    int extra = N % size;
-    int base_count = N / size;
+    int extra = length % size;
+    int base_count = length / size;
 
     // Allocate receive counts and displacements buffers
     int *recvcounts = malloc(size * sizeof(int));
@@ -107,18 +107,6 @@ void Bgather(void *sendbuf, void *recvbuf, int N, MPI_Datatype datatype, int roo
     if (recvcounts) send_count = recvcounts[rank];
 
     if (rank != root) {
-        // Each process modifies its local array portion before sending
-        if (datatype == MPI_INT) {
-            int *buf = (int *)sendbuf;
-            for (int i = 0; i < send_count; i++) buf[i]++;
-        } else if (datatype == MPI_CHAR) {
-            char *buf = (char *)sendbuf;
-            for (int i = 0; i < send_count; i++) {
-                // Toggle case of each character (A <-> a)
-                if (buf[i] >= 'A' && buf[i] <= 'Z') buf[i] = buf[i] - 'A' + 'a';
-                else if (buf[i] >= 'a' && buf[i] <= 'z') buf[i] = buf[i] - 'a' + 'A';
-            }
-        }
         MPI_Send(sendbuf, send_count, datatype, root, TAG_GATHER, comm);
     } else {
         // Root copies its own data into the correct place in the final buffer
