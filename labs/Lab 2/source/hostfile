@@ -1,0 +1,9 @@
+# This is an example hostfile.  Comments begin with #.
+#
+# Since no slots are specified, the number of slots defaults to the
+# number of processor cores available on the machine.
+foo.example.com
+
+# We want to allow launching a maximum of 2 processes on this host
+# (e.g., potentially because it has two processor cores)
+bar.example.com slots=2

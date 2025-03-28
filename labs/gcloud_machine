@@ -1,0 +1,22 @@
+gcloud compute instances create instance-gcp \
+    --project=cloud-project-3141 \
+    --zone=us-central1-a \
+    --description=Compute\ \
+Engine\ \(GCP\)\ instance. \
+    --machine-type=e2-micro \
+    --network-interface=network-tier=PREMIUM,stack-type=IPV4_ONLY,subnet=default \
+    --metadata=ssh-keys=a.garofalo47.unisa:ssh-rsa\ \
+AAAAB3NzaC1yc2EAAAADAQABAAACAQCVbHOe17\+xVvNyQnNudvX1JfUUVXxn6HxR4Ow5Gb1s/6SYg8tlS865KxoXrEbiCRhTPnsTmstTHcF/7bDTszc9PN2GjoLZWia7qRLJU2n743oaRtvaFbykFuhlF3zyRPyd2mhsQKuOlu8QItLttYOC5/CANFx3m8gxwEh388sQAX3xRf95OtqS5aODJ5cvhG/WDnRRV2QJCGj\+rrc1ZAyKVxf3CxcpAsswPh531a\+GK6CHGO3Wp4C37DRR\+QSBqaQzsNFuH840DttBPio97qmr26xrWl7Qd4wGY5fSZZTmoscAZ7QkACYk/ZFuH3MrwyHxvhxy4XKcJ6bP3E2EGR6H7p/V4b6p4QgINHALKA0V5DYO6HTyGLNTf3vyh7H\+QV4\+olBJpmCCi9SW\+0EPTG98FeuTkJkUtqwQpHB/c/vSejnsYvCWR1rURBCKBxHQ5JVo2XR1ZquF65or8iKwLIXDUGaHcBmZ3I5V5r7SqWZBo7b3bSHbhgfB9PpzEwpvP/rFeo2tfmkbdJi6E5\+TXrV5PoMBGUrgCCKDpzHFMbSm10bsQX4o/uKisgJ\+E3vVSgsKyy2JcyCXP9thIZDh1Lf2HZOv2Z/Cp1w2INwrul7EdmPggxelKRsESN249gMl7RNAkbBEgxxiP\+yVM2Gz61NNb\+\+fa78SVJhNpzqiBLxKvQ==\ a.garofalo47.unisa@gmail.com \
+    --no-restart-on-failure \
+    --maintenance-policy=TERMINATE \
+    --provisioning-model=SPOT \
+    --instance-termination-action=STOP \
+    --service-account=883345067392-compute@developer.gserviceaccount.com \
+    --scopes=https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring.write,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/trace.append \
+    --tags=http-server,https-server,lb-health-check \
+    --create-disk=auto-delete=yes,boot=yes,device-name=instance-gcp,image=projects/ubuntu-os-cloud/global/images/ubuntu-2004-focal-v20250213,mode=rw,size=10,type=pd-balanced \
+    --no-shielded-secure-boot \
+    --shielded-vtpm \
+    --shielded-integrity-monitoring \
+    --labels=goog-ec-src=vm_add-gcloud \
+    --reservation-affinity=any
