@@ -47,22 +47,17 @@ int main(int argc, char *argv[]) {
         perform_scatter(data, length, datatype, rank, size, operation_type);
     } else if (strcmp(operation, "gather") == 0) {
         perform_gather(data, length, datatype, rank, size, operation_type);
-        } else if (strcmp(operation, "ring") == 0) {
-        if (rank == 0) {
-            fprintf(stderr, "Error: Ring operation not yet implemented.\n");
-            MPI_Finalize();
-            exit(EXIT_FAILURE);
-        }
+    } else if (strcmp(operation, "reduce") == 0) {
+        perform_reduce(data, length, datatype, rank, size, operation_type);
     }
 
     MPI_Barrier(MPI_COMM_WORLD);
     double end = MPI_Wtime();
-
-    free(data);
     MPI_Finalize();
 
     if (rank == 0) {
         printf("Execution time (ms) = %f\n", (end - start) * 1000);
+        free(data);
     }
     
     return 0;

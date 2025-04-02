@@ -1,3 +1,14 @@
+/*
+--------------------------------
+MPI Point-to-Point Communication
+--------------------------------
+Sending a string (read from stdin) from the process with rank 0 to the process with rank 1.
+
+Note:
+The rank values refer to the processes' indices obtained from the MPI_COMM_WORLD communicator.
+Develop an MPI program in C for the following problems, using only the MPI_Send and MPI_Recv operations.
+*/
+
 #include <mpi.h>
 #include <stdio.h>
 #include <string.h>
@@ -22,9 +33,9 @@ int main(int argc, char *argv[]) {
 
     if (rank == 0) {
         printf("Enter a string to send to process 1: ");
-        fflush(stdout);
         fgets(message, MAX_LEN, stdin);
         message[strcspn(message, "\n")] = 0;
+        fflush(stdout);
     }
 
     MPI_Barrier(MPI_COMM_WORLD);

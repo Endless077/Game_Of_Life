@@ -1,3 +1,18 @@
+/*
+--------------------------------
+MPI Point-to-Point Communication
+--------------------------------
+Given P MPI processes and an array of integer values with length N, perform the following operations:
+
+    -Broadcasting, the process with rank 0 sends to all processes 1..P-1;
+    -Gathering, the process with rank 0 receives an integer value from all processes 1...P-1;
+    -Scatter, the process with rank 0 sends a portion of the array to each process in 1...P-1.
+
+Note:
+The rank values refer to the processes' indices obtained from the MPI_COMM_WORLD communicator.
+Develop an MPI program in C for the following problems, using only the MPI_Send and MPI_Recv operations.
+*/
+
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -68,8 +83,9 @@ int main(int argc, char *argv[]) {
             MPI_Send(data, N, MPI_INT, dest, TAG_BROADCAST, MPI_COMM_WORLD);
         }
     } else {
+        MPI_Status status;
         data = (int*) malloc(N * sizeof(int));
-        MPI_Recv(data, N, MPI_INT, 0, TAG_BROADCAST, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        MPI_Recv(data, N, MPI_INT, 0, TAG_BROADCAST, MPI_COMM_WORLD, &status);
     }
 
     printf("Process %d received broadcasted array: ", rank);
@@ -92,7 +108,8 @@ int main(int argc, char *argv[]) {
             }
         }
     } else {
-        MPI_Recv(recv_buffer, recv_count, MPI_INT, 0, TAG_SCATTER, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        MPI_Status status;
+        MPI_Recv(recv_buffer, recv_count, MPI_INT, 0, TAG_SCATTER, MPI_COMM_WORLD, &status);
     }
 
     printf("Process %d received values from scatter: ", rank);
@@ -112,7 +129,8 @@ int main(int argc, char *argv[]) {
             gathered[i] = recv_buffer[i];
 
         for (int src = 1; src < size; src++) {
-            MPI_Recv(&gathered[displs[src]], sendcounts[src], MPI_INT, src, TAG_GATHER, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            MPI_Status status;
+            MPI_Recv(&gathered[displs[src]], sendcounts[src], MPI_INT, src, TAG_GATHER, MPI_COMM_WORLD, &status);
         }
 
         printf("Process %d gathered values: ", rank);
@@ -120,15 +138,14 @@ int main(int argc, char *argv[]) {
             printf("%d ", gathered[i]);
         }
         printf("\n");
-        fflush(stdout);
         free(gathered);
+        fflush(stdout);
     } else {
         MPI_Send(recv_buffer, recv_count, MPI_INT, 0, TAG_GATHER, MPI_COMM_WORLD);
     }
 
     MPI_Barrier(MPI_COMM_WORLD);
     end = MPI_Wtime();
-
     MPI_Finalize();
 
     if (rank == 0) {

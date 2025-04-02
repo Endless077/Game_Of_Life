@@ -11,6 +11,8 @@
 
 #include "mycollective.h"
 
+/* ********************************************************************************************* */
+
 // Function Blocking Broadcast
 void Bbroadcast(void *data, int count, MPI_Datatype datatype, int root, MPI_Comm comm) {
     // Initialize
@@ -122,3 +124,86 @@ void Bgather(void *sendbuf, void *recvbuf, int length, MPI_Datatype datatype, in
     free(recvcounts);
     free(displs);
 }
+
+/* ********************************************************************************************* */
+
+// Funzione generica per NBreduce (non-blocking)
+void NBreduce(void *data, int N, MPI_Datatype datatype, int root, MPI_Comm comm, int (*function)(int, int)) {
+    int rank, size;
+    MPI_Comm_rank(comm, &rank);
+    MPI_Comm_size(comm, &size);
+
+    int *local_data = NULL;
+    int local_size = N / size + (rank < N % size ? 1 : 0);
+
+    // Step 1: Non-blocking scatter
+    // TODO: Non-blocking scatter
+
+    // Step 2: Calcolo locale
+    int local_result = local_data[0];
+    for (int i = 1; i < local_size; i++) {
+        local_result = function(local_result, local_data[i]);
+    }
+
+    free(local_data);
+
+    // Step 3: Non-blocking gather
+    int *gathered = NULL;
+    if (rank == root) {
+        gathered = malloc(size * sizeof(int));
+    }
+
+    // TODO: Non-Blocking Gather
+
+    // Step 4: Riduzione finale sul root
+    if (rank == root) {
+        int final_result = gathered[0];
+        for (int i = 1; i < size; i++) {
+            final_result = function(final_result, gathered[i]);
+        }
+
+        printf("Reduce Result (Non-Blocking): %d\n", final_result);
+        free(gathered);
+    }
+}
+
+// Funzione generica per Breduce (blocking)
+void Breduce(void *data, int N, MPI_Datatype datatype, int root, MPI_Comm comm, int (*function)(int, int)) {
+    int rank, size;
+    MPI_Comm_rank(comm, &rank);
+    MPI_Comm_size(comm, &size);
+
+    int *local_data;
+
+    // Step 1: Scatter
+    Bscatter(data, (void **)&local_data, N, datatype, 0, MPI_COMM_WORLD);
+
+    // Step 2: Local computation
+    int local_result = local_data[0];
+    for (int i = 1; i < (N / size + (rank < N % size ? 1 : 0)); i++) {
+        local_result = function(local_result, local_data[i]);
+    }
+
+    free(local_data);
+
+    // Step 3: Gather local results at root
+    int *gathered = NULL;
+    if (rank == 0) {
+        gathered = malloc(size * sizeof(int));
+    }
+
+    Bgather(&local_result, gathered, size, MPI_INT, root, comm);
+
+    // Step 4: Root computes final result
+    if (rank == 0) {
+        int final_result = gathered[0];
+        for (int i = 1; i < size; i++) {
+            final_result = function(final_result, gathered[i]);
+        }
+
+        printf("Reduce Result (blocking): %d\n", final_result);
+        free(gathered);
+    }
+}
+
+/* ********************************************************************************************* */

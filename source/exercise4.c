@@ -1,3 +1,19 @@
+/*
+--------------------------------
+MPI Point-to-Point Communication
+--------------------------------
+Ring: Given P processes, the process with rank i sends an integer value to the process with rank i+1. Note that the communication pattern is circular and toroidal,
+so the process with rank P-1 sends to the process with rank 0. The program execution involves 10 iterations. In each iteration, processes increment the value
+received from the left neighbor by a pseudo-random integer between 0-100. A particular iteration ends when the value received by a process exceeds a certain
+threshold S provided as input to the program. At the end of the 10 iterations, the program writes to standard output (rank 0) the average number of
+communication rounds needed to converge using P and S. Note that random number generators should not be reinitialized between iterations. It is
+recommended to initialize the generators using the rank value.
+
+Note:
+The rank values refer to the processes' indices obtained from the MPI_COMM_WORLD communicator
+Develop an MPI program in C for the following problems.
+*/
+
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -5,7 +21,7 @@
 #include <time.h>
 
 #define TAG_FINISH 1
-#define TAG_DATA 0
+#define TAG_RUNNING 0
 
 #define TAG_GATHER 99
 
@@ -40,7 +56,7 @@ int main(int argc, char *argv[]) {
 
     int left = (rank - 1 + size) % size;
     int right = (rank + 1) % size;
-    
+
     int total_sends, local_sends = 0;
     int value, iteration = 0;
     int converged = 0;
@@ -57,16 +73,16 @@ int main(int argc, char *argv[]) {
                 int add = rand() % 101;
                 value += add;
                 printf("[Iter %d | Rank %d] adds %d → %d → to %d\n", iteration, rank, add, value, right);
-                MPI_Send(&value, 1, MPI_INT, right, TAG_DATA, MPI_COMM_WORLD);
+                MPI_Send(&value, 1, MPI_INT, right, TAG_RUNNING, MPI_COMM_WORLD);
                 local_sends++;
 
                 MPI_Status status;
-                MPI_Recv(&value, 1, MPI_INT, left, TAG_DATA, MPI_COMM_WORLD, &status);
+                MPI_Recv(&value, 1, MPI_INT, left, TAG_RUNNING, MPI_COMM_WORLD, &status);
 
                 if (value > threshold) {
                     converged = 1;
                     printf("[Iter %d | Rank %d] received %d > %d → Done.\n", iteration, rank, value, threshold);
-                    MPI_Send(&value, 1, MPI_INT, right, TAG_DATA, MPI_COMM_WORLD);
+                    MPI_Send(&value, 1, MPI_INT, right, TAG_RUNNING, MPI_COMM_WORLD);
                     local_sends++;
                     break;
                 } else {
@@ -76,11 +92,11 @@ int main(int argc, char *argv[]) {
 
             if (!converged) {
                 printf("[Iter %d | Rank %d] Max iterations reached. Sending final value to close ring.\n", iteration, rank);
-                MPI_Send(&value, 1, MPI_INT, right, TAG_DATA, MPI_COMM_WORLD);
+                MPI_Send(&value, 1, MPI_INT, right, TAG_RUNNING, MPI_COMM_WORLD);
                 local_sends++;
 
                 MPI_Status status;
-                MPI_Recv(&value, 1, MPI_INT, left, TAG_DATA, MPI_COMM_WORLD, &status);
+                MPI_Recv(&value, 1, MPI_INT, left, TAG_RUNNING, MPI_COMM_WORLD, &status);
                 printf("[Iter %d | Rank %d] Final message received back. Exiting cleanly.\n", iteration, rank);
             }
         }
@@ -106,14 +122,14 @@ int main(int argc, char *argv[]) {
                 } else {
                     printf("[Iter %d | Rank %d] received %d > %d → pass & exit\n", iteration, rank, value, threshold);
                 }
-                MPI_Send(&value, 1, MPI_INT, right, TAG_DATA, MPI_COMM_WORLD);
+                MPI_Send(&value, 1, MPI_INT, right, TAG_RUNNING, MPI_COMM_WORLD);
                 local_sends++;
                 break;
             } else {
                 int add = rand() % 101;
                 value += add;
                 printf("[Iter %d | Rank %d] adds %d → %d → to %d\n", iteration, rank, add, value, right);
-                MPI_Send(&value, 1, MPI_INT, right, TAG_DATA, MPI_COMM_WORLD);
+                MPI_Send(&value, 1, MPI_INT, right, TAG_RUNNING, MPI_COMM_WORLD);
                 local_sends++;
             }
         }
