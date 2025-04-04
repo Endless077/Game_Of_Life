@@ -9,9 +9,9 @@
 
 /* ********************************************************************************************* */
 
-//void NBbroadcast(void *data, int count, MPI_Datatype datatype, int root, MPI_Comm comm);
-//void NBscatter(void *sendbuf, void **recvbuf, int N, MPI_Datatype datatype, int root, MPI_Comm comm);
-//void NBgather(void *sendbuf, void *recvbuf, int N, MPI_Datatype datatype, int root, MPI_Comm comm);
+void NBbroadcast(void *data, int count, MPI_Datatype datatype, int root, MPI_Comm comm);
+void NBscatter(void *sendbuf, void **recvbuf, int N, MPI_Datatype datatype, int root, MPI_Comm comm);
+void NBgather(void *sendbuf, void *recvbuf, int N, MPI_Datatype datatype, int root, MPI_Comm comm);
 
 /* ********************************************************************************************* */
 

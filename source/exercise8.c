@@ -1,16 +1,19 @@
 /*
---------------------------------
-MPI Point-to-Point Communication
---------------------------------
-Given P MPI processes and an array of integer values with length N, perform the following operations:
+----------------------------
+MPI Collective communication
+----------------------------
+Broadcasting: Develop an MPI program utilizing P processors, where the process with rank 0 in MPI_COMM_WORLD
+broadcasts an array of doubles to all other processes in MPI_COMM_WORLD.
 
-    -Broadcasting, the process with rank 0 sends to all processes 1..P-1;
-    -Gathering, the process with rank 0 receives an integer value from all processes 1...P-1;
-    -Scatter, the process with rank 0 sends a portion of the array to each process in 1...P-1.
+Scattering: Develop an MPI program utilizing P processors, where the process with rank 0 in MPI_COMM_WORLD
+scatters an array of doubles among all processes in MPI_COMM_WORLD.
+
+Gathering: Develop an MPI program utilizing P processors, where the process with rank 0 in MPI_COMM_WORLD
+gathers a set of double values distributed among all processes in MPI_COMM_WORLD.
 
 Note:
-The rank values refer to the processes' indices obtained from the MPI_COMM_WORLD communicator.
-Develop an MPI program in C for the following problems, using only the MPI_Send and MPI_Recv operations.
+The rank values refer to the processes' indices obtained from the MPI_COMM_WORLD communicator
+Develop an MPI program in C for the following problems.
 */
 
 #include <mpi.h>
@@ -41,25 +44,24 @@ int main(int argc, char *argv[]) {
     }
 
     // Initialization
-    MPI_Init(&argc, &argv);                 // Initialize MPI environment
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);   // Get current process rank
-    MPI_Comm_size(MPI_COMM_WORLD, &size);   // Get total number of processes
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-    int *data = NULL;
+    double *data = NULL;
     int extra = N % size;
     int base_count = N / size;
 
     int *displs = (int*)malloc(size * sizeof(int));
     int *sendcounts = (int*)malloc(size * sizeof(int));
 
-    // Initialize the array in the root process
     if (rank == 0) {
-        data = (int*) malloc(N * sizeof(int));
+        data = (double*) malloc(N * sizeof(double));
         srand(time(NULL));
-        printf("Initialized Array:\n");
+        printf("Initialization Array:\n", rank);
         for (int i = 0; i < N; i++) {
-            data[i] = rand() % 100;
-            printf("%d ", data[i]);
+            data[i] = (rand() % 1000) / 10.0;
+            printf("%.1f ", data[i]);
         }
         printf("\n\n");
     }
@@ -73,7 +75,7 @@ int main(int argc, char *argv[]) {
     }
 
     int recv_count = sendcounts[rank];
-    int *recv_buffer = (int*)malloc(recv_count * sizeof(int));
+    double *recv_buffer = (double*)malloc(recv_count * sizeof(double));
 
     MPI_Barrier(MPI_COMM_WORLD);
     start = MPI_Wtime();
@@ -82,20 +84,18 @@ int main(int argc, char *argv[]) {
     /*     BROADCAST   */
     /*******************/
     if (rank == 0) {
-        // Send full array to all other processes
         for (int dest = 1; dest < size; dest++) {
-            MPI_Send(data, N, MPI_INT, dest, TAG_BROADCAST, MPI_COMM_WORLD);
+            MPI_Send(data, N, MPI_DOUBLE, dest, TAG_BROADCAST, MPI_COMM_WORLD);
         }
     } else {
-        // Receive full array from process 0
         MPI_Status status;
-        data = (int*) malloc(N * sizeof(int));
-        MPI_Recv(data, N, MPI_INT, 0, TAG_BROADCAST, MPI_COMM_WORLD, &status);
+        data = (double*) malloc(N * sizeof(double));
+        MPI_Recv(data, N, MPI_DOUBLE, 0, TAG_BROADCAST, MPI_COMM_WORLD, &status);
     }
 
     printf("Process %d received broadcasted array: ", rank);
     for (int i = 0; i < N; i++) {
-        printf("%d ", data[i]);
+        printf("%.1f ", data[i]);
     }
     printf("\n");
     fflush(stdout);
@@ -104,26 +104,23 @@ int main(int argc, char *argv[]) {
     /*      SCATTER    */
     /*******************/
     if (rank == 0) {
-        // Send chunks of the array to each process
         for (int dest = 0; dest < size; dest++) {
             if (dest == 0) {
-                // Copy own chunk locally
                 for (int i = 0; i < sendcounts[0]; i++)
                     recv_buffer[i] = data[i];
             } else {
-                MPI_Send(&data[displs[dest]], sendcounts[dest], MPI_INT, dest, TAG_SCATTER, MPI_COMM_WORLD);
+                MPI_Send(&data[displs[dest]], sendcounts[dest], MPI_DOUBLE, dest, TAG_SCATTER, MPI_COMM_WORLD);
             }
         }
     } else {
-        // Receive local chunk from process 0
         MPI_Status status;
-        MPI_Recv(recv_buffer, recv_count, MPI_INT, 0, TAG_SCATTER, MPI_COMM_WORLD, &status);
+        MPI_Recv(recv_buffer, recv_count, MPI_DOUBLE, 0, TAG_SCATTER, MPI_COMM_WORLD, &status);
     }
 
     printf("Process %d received values from scatter: ", rank);
     for (int i = 0; i < recv_count; i++) {
-        printf("%d ", recv_buffer[i]);
-        recv_buffer[i] += 1;
+        printf("%.1f ", recv_buffer[i]);
+        recv_buffer[i] += 1.0; // Modify data
     }
     printf("\n");
     fflush(stdout);
@@ -132,26 +129,24 @@ int main(int argc, char *argv[]) {
     /*      GATHER     */
     /*******************/
     if (rank == 0) {
-        // Receive modified data from all processes
-        int *gathered = (int*) malloc(N * sizeof(int));
+        double *gathered = (double*) malloc(N * sizeof(double));
         for (int i = 0; i < sendcounts[0]; i++)
             gathered[i] = recv_buffer[i];
 
         for (int src = 1; src < size; src++) {
             MPI_Status status;
-            MPI_Recv(&gathered[displs[src]], sendcounts[src], MPI_INT, src, TAG_GATHER, MPI_COMM_WORLD, &status);
+            MPI_Recv(&gathered[displs[src]], sendcounts[src], MPI_DOUBLE, src, TAG_GATHER, MPI_COMM_WORLD, &status);
         }
 
         printf("Process %d gathered values: ", rank);
         for (int i = 0; i < N; i++) {
-            printf("%d ", gathered[i]);
+            printf("%.1f ", gathered[i]);
         }
         printf("\n");
         free(gathered);
         fflush(stdout);
     } else {
-        // Send modified local chunk to process 0
-        MPI_Send(recv_buffer, recv_count, MPI_INT, 0, TAG_GATHER, MPI_COMM_WORLD);
+        MPI_Send(recv_buffer, recv_count, MPI_DOUBLE, 0, TAG_GATHER, MPI_COMM_WORLD);
     }
 
     MPI_Barrier(MPI_COMM_WORLD);
@@ -159,7 +154,7 @@ int main(int argc, char *argv[]) {
     MPI_Finalize();
 
     if (rank == 0) {
-        printf("\nExecution time (ms) = %f\n", (end - start) * 1000);
+        printf("\nExecution time (ms) = %.3f\n", (end - start) * 1000);
         free(data);
     }
 

@@ -19,20 +19,38 @@ void fill_array(void *data, int length, MPI_Datatype datatype) {
 
     if (datatype == MPI_INT) {
         int *idata = (int *)data;
-        for (int i = 0; i < length; i++)
+        printf("Initialized array (int):\n");
+        for (int i = 0; i < length; i++) {
             idata[i] = rand() % 100;
-    } else if(datatype == MPI_CHAR) {
+            printf("%d ", idata[i]);
+        }
+        printf("\n");
+    } else if (datatype == MPI_DOUBLE) {
+        double *ddata = (double *)data;
+        printf("Initialized array (double):\n");
+        for (int i = 0; i < length; i++) {
+            double raw = (double)(rand() % 100) + (rand() / (double)RAND_MAX);
+            ddata[i] = ((int)(raw * 100)) / 100.0;
+            printf("%.2f ", ddata[i]);
+        }
+        printf("\n");
+    } else if (datatype == MPI_CHAR) {
         char *cdata = (char *)data;
-        for (int i = 0; i < length; i++)
-            cdata[i] = 'A' + (rand() % 26);
+        printf("Initialized array (char):\n");
+        for (int i = 0; i < length; i++) {
+            cdata[i] = (rand() % 2 == 0) ? 'A' + (rand() % 26) : 'a' + (rand() % 26);
+            printf("%c ", cdata[i]);
+        }
+        printf("\n");
     }
+    fflush(stdout);
 }
 
 // Validate the input of the MPI Program
 int validate_input(int argc, char *argv[], int rank) {
     if (argc != 5) {
         if(rank == 0)
-            printf("Usage: %s <length> <datatype (int|char)> <operation (broadcast|scatter|gather|ring)> <operation_type (non-blocking|blocking)>\n", argv[0]);
+            printf("Usage: %s <length> <datatype (int|char)> <operation (broadcast|scatter|gather|reduce)> <operation_type (non-blocking|blocking)>\n", argv[0]);
         return 0;
     }
 
@@ -46,8 +64,8 @@ int validate_input(int argc, char *argv[], int rank) {
         return 0;
     }
 
-    if (strcmp(type, "int") != 0 && strcmp(type, "char") != 0) {
-        if(rank == 0) printf("Error: type must be 'int' or 'char'.\n");
+    if (strcmp(type, "int") != 0 && strcmp(type, "double") != 0 && strcmp(type, "char") != 0) {
+        if(rank == 0) printf("Error: type must be 'int', 'double' or 'char'.\n");
         return 0;
     }
 
@@ -68,7 +86,6 @@ int validate_input(int argc, char *argv[], int rank) {
 
     return 1;
 }
-
 
 // Convert the C type in a MPI Type
 MPI_Datatype get_mpi_datatype(const char *type_str) {
@@ -98,7 +115,7 @@ int max_op(int a, int b) {
 // Perform the broadcast operation
 void perform_broadcast(void *data, int length, MPI_Datatype datatype, int rank, const char *operation_type) {
     if (strcmp(operation_type, "non-blocking") == 0) {
-        //NBbroadcast(data, length, datatype, 0, MPI_COMM_WORLD);
+        NBbroadcast(data, length, datatype, 0, MPI_COMM_WORLD);
     } else {
         Bbroadcast(data, length, datatype, 0, MPI_COMM_WORLD);
     }
@@ -109,7 +126,10 @@ void perform_broadcast(void *data, int length, MPI_Datatype datatype, int rank, 
     if (datatype == MPI_INT) {
         int *buf = data;
         for (int i = 0; i < length; i++) printf("%d ", buf[i]);
-    } else {
+    } else if (datatype == MPI_DOUBLE) {
+        double *buf = data;
+        for (int i = 0; i < length; i++) printf("%.2f ", buf[i]);
+    } else if (datatype == MPI_CHAR) {
         char *buf = data;
         for (int i = 0; i < length; i++) printf("%c ", buf[i]);
     }
@@ -121,21 +141,8 @@ void perform_broadcast(void *data, int length, MPI_Datatype datatype, int rank, 
 void perform_scatter(void *data, int length, MPI_Datatype datatype, int rank, int size, const char *operation_type) {
     void *recvbuf;
 
-    if (rank == 0) {
-        printf("Initialized array: ");
-        if (datatype == MPI_INT) {
-            int *buf = (int *)data;
-            for (int i = 0; i < length; i++) printf("%d ", buf[i]);
-        } else {
-            char *buf = (char *)data;
-            for (int i = 0; i < length; i++) printf("%c ", buf[i]);
-        }
-        printf("\n");
-        fflush(stdout);
-    }
-
     if (strcmp(operation_type, "non-blocking") == 0) {
-        //NBscatter(data, &recvbuf, length, datatype, 0, MPI_COMM_WORLD);
+        NBscatter(data, &recvbuf, length, datatype, 0, MPI_COMM_WORLD);
     } else {
         Bscatter(data, &recvbuf, length, datatype, 0, MPI_COMM_WORLD);
     }
@@ -148,7 +155,10 @@ void perform_scatter(void *data, int length, MPI_Datatype datatype, int rank, in
     if (datatype == MPI_INT) {
         int *buf = recvbuf;
         for (int i = 0; i < recv_count; i++) printf("%d ", buf[i]);
-    } else {
+    } else if (datatype == MPI_DOUBLE) {
+        double *buf = data;
+        for (int i = 0; i < length; i++) printf("%.2f ", buf[i]);
+    } else if (datatype == MPI_CHAR) {
         char *buf = recvbuf;
         for (int i = 0; i < recv_count; i++) printf("%c ", buf[i]);
     }
@@ -162,21 +172,8 @@ void perform_scatter(void *data, int length, MPI_Datatype datatype, int rank, in
 void perform_gather(void *data, int length, MPI_Datatype datatype, int rank, int size, const char *operation_type) {
     void *recvbuf;
 
-    if (rank == 0) {
-        printf("Initialized scatter: ");
-        if (datatype == MPI_INT) {
-            int *buf = (int *)data;
-            for (int i = 0; i < length; i++) printf("%d ", buf[i]);
-        } else {
-            char *buf = (char *)data;
-            for (int i = 0; i < length; i++) printf("%c ", buf[i]);
-        }
-        printf("\n");
-        fflush(stdout);
-    }
-
     if (strcmp(operation_type, "non-blocking") == 0) {
-        //NBscatter(data, &recvbuf, length, datatype, 0, MPI_COMM_WORLD);
+        NBscatter(data, &recvbuf, length, datatype, 0, MPI_COMM_WORLD);
     } else {
         Bscatter(data, &recvbuf, length, datatype, 0, MPI_COMM_WORLD);
     }
@@ -190,7 +187,10 @@ void perform_gather(void *data, int length, MPI_Datatype datatype, int rank, int
     if (datatype == MPI_INT) {
         int *buf = (int *)recvbuf;
         for (int i = 0; i < recv_count; i++) printf("%d ", buf[i]);
-    } else {
+    } else if (datatype == MPI_DOUBLE) {
+        double *buf = data;
+        for (int i = 0; i < length; i++) printf("%.2f ", buf[i]);
+    } else if (datatype == MPI_CHAR) {
         char *buf = (char *)recvbuf;
         for (int i = 0; i < recv_count; i++) printf("%c ", buf[i]);
     }
@@ -200,7 +200,10 @@ void perform_gather(void *data, int length, MPI_Datatype datatype, int rank, int
     if (datatype == MPI_INT) {
         int *buf = recvbuf;
         for (int i = 0; i < recv_count; i++) buf[i]++;
-    } else {
+    } else if (datatype == MPI_DOUBLE) {
+        double *buf = recvbuf;
+        for (int i = 0; i < recv_count; i++) buf[i]++;
+    } else if (datatype == MPI_CHAR) {
         char *buf = recvbuf;
         for (int i = 0; i < recv_count; i++) buf[i]++;
     }
@@ -210,7 +213,10 @@ void perform_gather(void *data, int length, MPI_Datatype datatype, int rank, int
     if (datatype == MPI_INT) {
         int *buf = (int *)recvbuf;
         for (int i = 0; i < recv_count; i++) printf("%d ", buf[i]);
-    } else {
+    } else if (datatype == MPI_DOUBLE) {
+        double *buf = data;
+        for (int i = 0; i < length; i++) printf("%.2f ", buf[i]);
+    } else if (datatype == MPI_CHAR) {
         char *buf = (char *)recvbuf;
         for (int i = 0; i < recv_count; i++) printf("%c ", buf[i]);
     }
@@ -218,7 +224,7 @@ void perform_gather(void *data, int length, MPI_Datatype datatype, int rank, int
     fflush(stdout);
 
     if (strcmp(operation_type, "non-blocking") == 0) {
-        //NBgather(recvbuf, data, length, datatype, 0, MPI_COMM_WORLD);
+        NBgather(recvbuf, data, length, datatype, 0, MPI_COMM_WORLD);
     } else {
         Bgather(recvbuf, data, length, datatype, 0, MPI_COMM_WORLD);
     }
@@ -228,7 +234,10 @@ void perform_gather(void *data, int length, MPI_Datatype datatype, int rank, int
         if (datatype == MPI_INT) {
             int *buf = data;
             for (int i = 0; i < length; i++) printf("%d ", buf[i]);
-        } else {
+        } else if (datatype == MPI_DOUBLE) {
+            double *buf = data;
+            for (int i = 0; i < length; i++) printf("%.2f ", buf[i]);
+        } else if (datatype == MPI_CHAR) {
             char *buf = data;
             for (int i = 0; i < length; i++) printf("%c ", buf[i]);
         }
@@ -245,7 +254,7 @@ void perform_reduce(void *data, int length, MPI_Datatype datatype, int rank, int
         NBreduce(data, length, datatype, 0, MPI_COMM_WORLD, min_op);
         NBreduce(data, length, datatype, 0, MPI_COMM_WORLD, max_op);
     } else {
-        Breduce(data, length, datatype, 0, MPI_COMM_WORLD, max_op);
+        Breduce(data, length, datatype, 0, MPI_COMM_WORLD, min_op);
         Breduce(data, length, datatype, 0, MPI_COMM_WORLD, max_op);
     }
 }

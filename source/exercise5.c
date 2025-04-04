@@ -33,7 +33,7 @@ void nonblocking_min_max(int *data, int N, int rank, int size) {
     MPI_Status status;
 
     if (rank == 0) {
-        // Step 1: Send data with MPI_Isend + MPI_Wait (robusto)
+        // Step 1: Send data with MPI_Isend + MPI_Wait
         for (int i = 1; i < size; i++) {
             int count = chunk + (i < remainder ? 1 : 0);
             int offset = i * chunk + (i < remainder ? i : remainder);
@@ -168,7 +168,7 @@ int main(int argc, char *argv[]) {
 
     if (argc != 3) {
         if (rank == 0)
-            printf("Usage: %s <N> <blocking|non-blocking>\n", argv[0]);
+            printf("Usage: %s <N> <non-blocking|blocking>\n", argv[0]);
         MPI_Finalize();
         return EXIT_FAILURE;
     }
@@ -206,7 +206,7 @@ int main(int argc, char *argv[]) {
     MPI_Finalize();
 
     if (rank == 0) {
-        printf("Execution time (ms): %.3f\n", (end - start) * 1000);
+        printf("\nExecution time (ms): %.3f\n", (end - start) * 1000);
         free(data);
     }
     

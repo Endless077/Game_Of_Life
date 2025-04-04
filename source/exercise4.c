@@ -22,21 +22,25 @@ Develop an MPI program in C for the following problems.
 
 #define TAG_FINISH 1
 #define TAG_RUNNING 0
-
 #define TAG_GATHER 99
+
+/* ********************************************************************************************* */
 
 int main(int argc, char *argv[]) {
     int rank, size, threshold;
     const int max_iterations = 10;
 
+    // Initialization
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
     double start, end;
+
     MPI_Barrier(MPI_COMM_WORLD);
     start = MPI_Wtime();
 
+    //Check and parse input threshold argument
     if (argc != 2) {
         if (rank == 0)
             printf("Usage: %s <threshold>\n", argv[0]);
@@ -52,6 +56,7 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
+    //Initialize random seed using rank
     srand(time(NULL) + rank);
 
     int left = (rank - 1 + size) % size;
@@ -61,8 +66,9 @@ int main(int argc, char *argv[]) {
     int value, iteration = 0;
     int converged = 0;
 
+    //Rank 0 initializes the ring and starts value propagation
     if (rank == 0) {
-        value = rand() % 101;
+        value = rand() % 100;
         printf("Initialization value: %d\n", value);
 
         if (value > threshold) {
@@ -70,8 +76,10 @@ int main(int argc, char *argv[]) {
         } else {
             while (iteration < max_iterations) {
                 iteration++;
-                int add = rand() % 101;
+
+                int add = rand() % 100;
                 value += add;
+
                 printf("[Iter %d | Rank %d] adds %d → %d → to %d\n", iteration, rank, add, value, right);
                 MPI_Send(&value, 1, MPI_INT, right, TAG_RUNNING, MPI_COMM_WORLD);
                 local_sends++;
@@ -82,6 +90,7 @@ int main(int argc, char *argv[]) {
                 if (value > threshold) {
                     converged = 1;
                     printf("[Iter %d | Rank %d] received %d > %d → Done.\n", iteration, rank, value, threshold);
+
                     MPI_Send(&value, 1, MPI_INT, right, TAG_RUNNING, MPI_COMM_WORLD);
                     local_sends++;
                     break;
@@ -90,6 +99,7 @@ int main(int argc, char *argv[]) {
                 }
             }
 
+            //Handle case when no process caused convergence
             if (!converged) {
                 printf("[Iter %d | Rank %d] Max iterations reached. Sending final value to close ring.\n", iteration, rank);
                 MPI_Send(&value, 1, MPI_INT, right, TAG_RUNNING, MPI_COMM_WORLD);
@@ -101,9 +111,11 @@ int main(int argc, char *argv[]) {
             }
         }
 
+        //Send termination signal through the ring
         MPI_Send(NULL, 0, MPI_INT, right, TAG_FINISH, MPI_COMM_WORLD);
 
     } else {
+        //Other ranks participate in the ring until a stop condition is reached
         while (1) {
             MPI_Status status;
             MPI_Recv(&value, 1, MPI_INT, left, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
@@ -122,12 +134,14 @@ int main(int argc, char *argv[]) {
                 } else {
                     printf("[Iter %d | Rank %d] received %d > %d → pass & exit\n", iteration, rank, value, threshold);
                 }
+
                 MPI_Send(&value, 1, MPI_INT, right, TAG_RUNNING, MPI_COMM_WORLD);
                 local_sends++;
                 break;
             } else {
-                int add = rand() % 101;
+                int add = rand() % 100;
                 value += add;
+
                 printf("[Iter %d | Rank %d] adds %d → %d → to %d\n", iteration, rank, add, value, right);
                 MPI_Send(&value, 1, MPI_INT, right, TAG_RUNNING, MPI_COMM_WORLD);
                 local_sends++;
@@ -137,10 +151,13 @@ int main(int argc, char *argv[]) {
 
     MPI_Barrier(MPI_COMM_WORLD);
 
+    
+    //Each process sends its local message count to rank 0
     if (rank != 0) {
         MPI_Send(&local_sends, 1, MPI_INT, 0, TAG_GATHER, MPI_COMM_WORLD);
     } else {
         total_sends = local_sends;
+
         int tmp;
         for (int i = 1; i < size; i++) {
             MPI_Status status;
@@ -152,9 +169,10 @@ int main(int argc, char *argv[]) {
     MPI_Barrier(MPI_COMM_WORLD);
     end = MPI_Wtime();
     MPI_Finalize();
-
+    
+    //Final reporting of execution metrics by rank 0
     if (rank == 0) {
-        printf("Execution time (ms): %.3f\n", (end - start) * 1000);
+        printf("\nExecution time (ms): %.3f\n", (end - start) * 1000);
         printf("Total messages exchanged: %d\n", total_sends);
         printf("Communication rounds: %d\n", iteration);
         printf("Convergence: %s\n", converged ? "YES" : "NO");
@@ -162,3 +180,5 @@ int main(int argc, char *argv[]) {
 
     return 0;
 }
+
+/* ********************************************************************************************* */
