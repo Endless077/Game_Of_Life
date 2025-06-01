@@ -90,6 +90,22 @@ void mpi_scatter_board(char *full_board,
  * This function updates the top and bottom ghost rows of the padded buffer buf
  * by sending and receiving the adjacent real rows from neighboring ranks.
  */
+// src/openMPI.c
+
+#include "openMPI.h"
+#include <mpi.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+/**
+ * @brief Exchange ghost rows with neighbor ranks (row-based, cyclic).
+ *
+ * Now ogni Sendrecv corrisponde esattamente a un Sendrecv opposto:
+ *  - Il primo Sendrecv manda la prima riga reale a rank_prev e riceve
+ *    la riga inferiore da rank_next (tag 0).
+ *  - Il secondo Sendrecv manda l'ultima riga reale a rank_next e riceve
+ *    la riga superiore da rank_prev (tag 1).
+ */
 void mpi_exchange_ghosts(char *buf,
                          int local_rows,
                          int cols,
@@ -98,35 +114,46 @@ void mpi_exchange_ghosts(char *buf,
     MPI_Comm_rank(comm, &rank);
     MPI_Comm_size(comm, &size);
 
-    // Compute previous and next ranks in a cyclic topology
     int rank_prev = (rank - 1 + size) % size;
     int rank_next = (rank + 1) % size;
 
     MPI_Status status;
 
-    // 1) Send first real row to rank_prev, receive last row of rank_prev into bottom ghost
+    // 1) Send first real row (buf + cols) a rank_prev, receive riga inferiore da rank_next
+    printf("DEBUG (mpi_exchange): [Rank %d] entering Sendrecv TOP→PREV (recv from NEXT=%d)\n",
+           rank, rank_next);
+    fflush(stdout);
     MPI_Sendrecv(
-        buf + cols,                      // send buffer: first real row
-        cols, MPI_CHAR,                  // send count & type
-        rank_prev, 0,                    // destination rank & tag
-        buf + (local_rows + 1) * cols,   // receive buffer: bottom ghost row
-        cols, MPI_CHAR,                  // receive count & type
-        rank_prev, 0,                    // source rank & tag
+        buf + cols,                        // send: first real row
+        cols, MPI_CHAR,
+        rank_prev, 0,                      // dest=rank_prev, tag=0
+        buf + (local_rows + 1) * cols,     // recv: bottom ghost (dalla riga inferiore di rank_next)
+        cols, MPI_CHAR,
+        rank_next, 0,                      // source=rank_next, tag=0
         comm,
         &status
     );
+    printf("DEBUG (mpi_exchange): [Rank %d] completed Sendrecv TOP↔BOTTOM (prev=%d, next=%d)\n",
+           rank, rank_prev, rank_next);
+    fflush(stdout);
 
-    // 2) Send last real row to rank_next, receive first row of rank_next into top ghost
+    // 2) Send last real row (buf + local_rows*cols) a rank_next, receive riga superiore da rank_prev
+    printf("DEBUG (mpi_exchange): [Rank %d] entering Sendrecv BOTTOM→NEXT (recv from PREV=%d)\n",
+           rank, rank_prev);
+    fflush(stdout);
     MPI_Sendrecv(
-        buf + (local_rows) * cols,      // send buffer: last real row
-        cols, MPI_CHAR,                 // send count & type
-        rank_next, 1,                   // destination rank & tag (different tag)
-        buf,                            // receive buffer: top ghost row
-        cols, MPI_CHAR,                 // receive count & type
-        rank_next, 1,                   // source rank & tag
+        buf + (local_rows) * cols,         // send: last real row
+        cols, MPI_CHAR,
+        rank_next, 1,                      // dest=rank_next, tag=1
+        buf,                               // recv: top ghost (dalla riga superiore di rank_prev)
+        cols, MPI_CHAR,
+        rank_prev, 1,                      // source=rank_prev, tag=1
         comm,
         &status
     );
+    printf("DEBUG (mpi_exchange): [Rank %d] completed Sendrecv BOTTOM↔TOP (prev=%d, next=%d)\n",
+           rank, rank_prev, rank_next);
+    fflush(stdout);
 }
 
 /**
