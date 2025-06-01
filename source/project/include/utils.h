@@ -1,21 +1,15 @@
+//   _____  _____  _    _   __             __       
+//  |_   _||_   _|/ |_ (_) [  |           [  |      
+//    | |    | | `| |-'__   | |  .--.      | |--.   
+//    | '    ' |  | | [  |  | | ( (`\]     | .-. |  
+//     \ \__/ /   | |, | |  | |  `'.'.  _  | | | |  
+//      `.__.'    \__/[___][___][\__) )(_)[___]|__] 
+//                                                  
+
 #ifndef UTILS_H
 #define UTILS_H
 
-/**
- * @file utils.h
- * @brief Utility functions for timing and RNG seeding.
- */
-
 #include <mpi.h>
-
-/**
- * @brief Return high‐resolution wall‐clock time.
- *
- * Wraps MPI_Wtime() to get a portable, high‐precision timer.
- *
- * @return Current time in seconds since an arbitrary MPI epoch.
- */
-double get_time(void);
 
 /**
  * @brief Initialize the RNG seed.
@@ -27,5 +21,14 @@ double get_time(void);
  * @return The actual seed used (either user_seed or time(NULL)).
  */
 unsigned int init_seed(int user_seed);
+
+/**
+ * @brief Return high‐resolution wall‐clock time.
+ *
+ * Wraps MPI_Wtime() to get a portable, high‐precision timer.
+ *
+ * @return Current time in seconds since an arbitrary MPI epoch.
+ */
+double get_time(void);
 
 #endif // UTILS_H

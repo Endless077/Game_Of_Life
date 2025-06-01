@@ -3,7 +3,7 @@
 cmake_minimum_required(VERSION 3.10)
 project(GameOfLifeMPI
     VERSION 1.0.0
-    DESCRIPTION "Conway's Game of Life parallel implementation with OpenMPI."
+    DESCRIPTION "Conway's Game of Life parallel implementation with mpix."
     LANGUAGES C
 )
 
@@ -30,10 +30,10 @@ option(ENABLE_TESTS "Build unit and integration tests" ON)
 # Find Dependencies
 # --------------------------------------------------------------------------------------------------
 
-# Find MPI (both mpich and OpenMPI)
+# Find MPI (both mpich and mpix)
 find_package(MPI REQUIRED)
 if(NOT MPI_C_FOUND)
-    message(FATAL_ERROR "MPI C compiler not found. Please install OpenMPI or MPICH.")
+    message(FATAL_ERROR "MPI C compiler not found. Please install mpix or MPICH.")
 endif()
 
 # --------------------------------------------------------------------------------------------------
@@ -53,7 +53,7 @@ include_directories(
 # Core library (static) – if in future you want to link it elsewhere
 add_library(libgameoflife STATIC
     src/life.c
-    src/openMPI.c
+    src/mpix.c
     src/utils.c
 )
 

@@ -1,20 +1,18 @@
+//    _____      _     ___           __       
+//   |_   _|    (_)  .' ..]         [  |      
+//     | |      __  _| |_  .---.     | |--.   
+//     | |   _ [  |'-| |-'/ /__\\    | .-. |  
+//    _| |__/ | | |  | |  | \__., _  | | | |  
+//   |________|[___][___]  '.__.'(_)[___]|__] 
+//                                            
+
 #ifndef LIFE_H
 #define LIFE_H
-
-/**
- * @file life.h
- * @brief Core API for Conway's Game of Life logic.
- *
- * This header provides functions to:
- *   - Create/destroy a random board (plain, without ghost rows).
- *   - Count alive cells in a plain board.
- *   - Advance one generation on a padded board with ghost rows (for MPI).
- */
 
 #include <stdlib.h>
 
 /**
- * @brief Allocate and initialize a random board (plain, size rows×cols).
+ * @brief Initialize and Allocate and initialize a random board (plain, size rows×cols).
  *
  * This function returns a flat array of size rows*cols. Each entry is 0 (dead)
  * or 1 (alive), chosen at random. It guarantees at least one alive cell
@@ -29,7 +27,7 @@
 char* life_create(int rows, int cols, unsigned int seed);
 
 /**
- * @brief Free a board previously allocated by life_create_random.
+ * @brief Destroy a board previously allocated by life_create_random.
  *
  * @param board Pointer returned by life_create_random().
  */
@@ -64,8 +62,8 @@ long life_count(const char *board, int size);
  *
  * @param current Pointer to current board of size (rows+2)*cols.
  * @param next    Pointer to buffer for next board, size (rows+2)*cols.
- * @param rows    Number of real rows (excludes ghost). Valid data in `current`
- *                is in rows 1..rows.  
+ * @param rows    Number of real rows (excludes ghost).
+ *                Valid data in `current` is in rows 1..rows.  
  * @param cols    Number of columns.
  */
 void life_step(const char *current, char *next, int rows, int cols);
