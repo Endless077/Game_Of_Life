@@ -31,17 +31,17 @@
 /* ********************************************************************************************* */
 
 static void print_usage(const char *prog_name);
-static int parse_args(int argc, char *argv[], int *rows, int *cols, int *iterations, int *user_seed);
+static int parse_args(int argc, char *argv[], int *rows, int *cols, int *epochs, int *user_seed);
 
 /* ********************************************************************************************* */
 
 /**
- * @brief Full parse command-line arguments for rows, cols, iterations, and optional seed.
+ * @brief Full parse command-line arguments for rows, cols, epochs, and optional seed.
  *
  * Expects the following usage:
  *   -n <rows>        Number of rows in the board (positive integer)
  *   -m <cols>        Number of columns in the board (positive integer)
- *   -i <iterations>  Number of simulation iterations (positive integer)
+ *   -e <epochs>      Number of simulation epochs (positive integer)
  *   -s <seed>        Optional random seed (positive integer; default: time-based)
  *
  * If any required argument is missing or invalid, prints usage and returns non-zero.
@@ -50,23 +50,23 @@ static int parse_args(int argc, char *argv[], int *rows, int *cols, int *iterati
  * @param argv        Argument vector from main().
  * @param rows        OUT: pointer to store parsed number of rows.
  * @param cols        OUT: pointer to store parsed number of columns.
- * @param iterations  OUT: pointer to store parsed number of iterations.
+ * @param epochs      OUT: pointer to store parsed number of epochs.
  * @param user_seed   OUT: pointer to store parsed seed (0 if none provided).
  * @return            0 on successful parse; non-zero on failure.
  */
 static int parse_args(int argc, char *argv[],
                       int *rows, int *cols,
-                      int *iterations, int *user_seed) {
+                      int *epochs, int *user_seed) {
     
-    *rows = *cols = *iterations = *user_seed = 0;
+    *rows = *cols = *epochs = *user_seed = 0;
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-n") == 0 && i + 1 < argc) {
             *rows = atoi(argv[++i]);
         } else if (strcmp(argv[i], "-m") == 0 && i + 1 < argc) {
             *cols = atoi(argv[++i]);
-        } else if (strcmp(argv[i], "-i") == 0 && i + 1 < argc) {
-            *iterations = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "-e") == 0 && i + 1 < argc) {
+            *epochs = atoi(argv[++i]);
         } else if (strcmp(argv[i], "-s") == 0 && i + 1 < argc) {
             *user_seed = atoi(argv[++i]);
         } else {
@@ -75,7 +75,7 @@ static int parse_args(int argc, char *argv[],
         }
     }
 
-    if (*rows <= 0 || *cols <= 0 || *iterations <= 0) {
+    if (*rows <= 0 || *cols <= 0 || *epochs <= 0) {
         print_usage(argv[0]);
         return -1;
     }
@@ -89,17 +89,17 @@ static int parse_args(int argc, char *argv[],
  * Displays the required command-line options and their descriptions:
  *   - -n <rows>       Number of rows in the board (positive integer)
  *   - -m <cols>       Number of columns in the board (positive integer)
- *   - -i <iterations> Number of simulation iterations (positive integer)
+ *   - -e <epochs>     Number of simulation epochs (positive integer)
  *   - -s <seed>       Optional random seed (positive integer; default: time-based)
  *
  * @param prog_name  Name of the executable (used to format the usage string)
  */
 static void print_usage(const char *prog_name) {
     fprintf(stderr,
-        "Usage: %s -n <rows> -m <cols> -i <iterations> [-s <seed>]\n"
+        "Usage: %s -n <rows> -m <cols> -e <epochs> [-s <seed>]\n"
         "  -n <rows>        Number of rows in the board (positive integer)\n"
         "  -m <cols>        Number of columns in the board (positive integer)\n"
-        "  -i <iterations>  Number of simulation iterations (positive integer)\n"
+        "  -i <epochs>      Number of simulation epochs (positive integer)\n"
         "  -s <seed>        Optional random seed (positive integer; default: time-based)\n",
         prog_name);
 }
@@ -107,24 +107,33 @@ static void print_usage(const char *prog_name) {
 /* ********************************************************************************************* */
 
 int main(int argc, char *argv[]) {
-    // 1. Initialize command-line arguments
-    int rows = 0, cols = 0, iterations = 0;
-    int user_seed = 0;
-
-    // 2. Parse command-line arguments
-    if (parse_args(argc, argv, &rows, &cols, &iterations, &user_seed) != 0) {
-        return EXIT_FAILURE;
-    }
-
-    // 3. Initialize MPI environment
+    // 1. Initialize MPI environment
     MPI_Init(&argc, &argv);
 
     int rank, size;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);  // get this process’s rank
     MPI_Comm_size(MPI_COMM_WORLD, &size);  // get total number of ranks
 
+    // 2. Initialize command-line arguments
+    int rows = 0, cols = 0, epochs = 0;
+    int user_seed = 0;
+
+    // 3. Parse command-line arguments
+    //    and share them to the others processes
+    if (rank == 0) {
+        if (parse_args(argc, argv, &rows, &cols, &epochs, &user_seed) != 0) {
+            MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
+        }
+    }
+
+    // Broadcast parsed values to everyone
+    MPI_Bcast(&rows,      1, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&cols,      1, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&epochs,    1, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&user_seed, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
     // 4. Initialize random seed separately on each rank
-    //    Add the rank to user_seed so that each rank has a different seed
+    //    add the rank to user_seed so that each rank has a different seed
     unsigned int seed = init_seed(user_seed + rank);
 
     if (rank == 0) {
@@ -183,7 +192,7 @@ int main(int argc, char *argv[]) {
     
     double start_time = get_time();
 
-    for (int gen = 1; gen <= iterations; gen++) {
+    for (int gen = 1; gen <= epochs; gen++) {
         // 9.1 Exchange ghost rows with neighbor ranks
         mpi_exchange_ghosts(current, local_rows, cols, MPI_COMM_WORLD);
 
@@ -228,6 +237,7 @@ int main(int argc, char *argv[]) {
             }
             prev_global_alive = global_alive;
         }
+
         // Broadcast updated stable_count from MASTER to all ranks
         MPI_Bcast(&stable_count, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
@@ -253,7 +263,7 @@ int main(int argc, char *argv[]) {
         printf("Simulation complete on a %dx%d board across %d ranks.\n",
                rows, cols, size);
         printf("Total time: %.4f s  Avg time/gen: %.6f s\n",
-               total_time, total_time / iterations);
+               total_time, total_time / epochs);
     }
 
     // 11. Cleanup local buffers and finalize MPI

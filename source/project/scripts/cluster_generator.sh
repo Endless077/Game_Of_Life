@@ -27,12 +27,8 @@ SLAVE_PREFIX="hpc-node"                     # ← slave instance prefix
 SLAVE_COUNT=3                               # ← number of slaves
 NODE_SLOTS=8                                # ← slots per node (vCPUs)
 
-# MPI job parameters (from script args):
-GRID_SIZE=${1:?Usage: $0 GRID_SIZE ITERATIONS [LOCAL_CODE_DIR]}
-ITERATIONS=${2:?Usage: $0 GRID_SIZE ITERATIONS [LOCAL_CODE_DIR]}
-
 # Path to your local project directory
-CODE_DIR_LOCAL=${3:-"./HPC_Project/source/project"}
+CODE_DIR_LOCAL=${1:-"./HPC_Project/source/project"}
 
 TOTAL_PROCS=$(( (SLAVE_COUNT + 1) * NODE_SLOTS ))
 
@@ -210,14 +206,5 @@ for i in $(seq 1 "${SLAVE_COUNT}"); do
   SLAVE="${SLAVE_PREFIX}-${i}"
   gcloud compute scp cluster@"${MASTER_NAME}":/home/cluster/hpc-code/game_of_life cluster@"${SLAVE}":/home/cluster/hpc-code --zone="${ZONE}"
 done
-
-#--------------------------------------
-# Launch the MPI job from the master
-#--------------------------------------
-echo ">> Running MPI job on the cluster as 'cluster'"
-gcloud compute ssh cluster@"${MASTER_NAME}" --zone="${ZONE}" --command="
-  cd ~/hpc-code &&
-  mpirun --hostfile ~/mpi_hosts.txt -np ${TOTAL_PROCS} ./game_of_life ${GRID_SIZE} ${ITERATIONS}
-"
 
 echo ">> All done!"
