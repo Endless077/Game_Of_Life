@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #===============================================================================
-# MPI Scalability Test Harness
+# MPI Scalability Test
 #
 # 1. Sweep over total MPI ranks: 2, 4, 8, 16, 32  
 # 2. Use a fixed epoch count: 100000  
@@ -12,7 +12,7 @@
 #      • total ranks
 #      • rows, cols
 #      • epochs (100000)
-#      • stop generation (steady, all-dead, or max)
+#      • stop generation (steady, all-dead, or total)
 #      • elapsed wall‐clock time (s)
 #===============================================================================
 
