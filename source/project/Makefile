@@ -41,7 +41,7 @@ ifndef P
 	$(error Please specify P=<nprocs>)
 endif
 	@echo ">> Running game_of_life with $(P) processes"
-	@cd $(CMAKE_BUILD_DIR) && mpirun -np $(P) ./game_of_life -n $(N) -m $(M) -i $(I) $(if $(S),-s $(S),)
+	@cd $(CMAKE_BUILD_DIR) && mpirun -np $(P) ./game_of_life -n $(N) -m $(M) -e $(E) $(if $(S),-s $(S),)
 
 # Remove all build files
 .PHONY: clean
@@ -52,9 +52,9 @@ clean:
 # Show help
 .PHONY: help
 help:
-	@echo "Available targets:"
+	@echo "Targets:"
 	@echo "  make           → Alias for 'make build'."
 	@echo "  make build     → Clean, configure, and compile the project."
-	@echo "  make run       → Run the executable. Requires N, M, I, P (and optional S)."
+	@echo "  make run       → Run the executable. Requires N, M, E, P (and optional S)."
 	@echo "  make clean     → Remove all build files."
 	@echo "  make help      → Show this help message."
